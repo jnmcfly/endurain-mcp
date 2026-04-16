@@ -9,7 +9,7 @@ Exposes the full Endurain REST API as MCP tools over **stdio**, installable with
 ### With uvx (recommended)
 
 ```bash
-uvx endurain-mcp
+uvx endurain-mcp --from git+https://github.com/jnmcfly/endurain-mcp.git
 ```
 
 ### With Claude Desktop / any MCP client
