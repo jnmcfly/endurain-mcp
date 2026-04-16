@@ -56,7 +56,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         }.items():
             if val is not None:
                 payload[key] = val
-        return client.post("/profile/goals/create", json=payload)
+        return client.post("/profile/goals", json=payload)
 
     @mcp.tool()
     def delete_goal(goal_id: int) -> dict:
@@ -69,19 +69,19 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Confirmation message.
         """
-        return client.delete(f"/profile/goals/{goal_id}/delete")
+        return client.delete(f"/profile/goals/{goal_id}")
 
     # --------------------------------------------------------- Default gear
 
     @mcp.tool()
-    def list_default_gear() -> list[dict]:
+    def get_default_gear() -> dict | None:
         """
-        List default gear assignments per activity type.
+        Get default gear assignments per activity type.
 
         Returns:
-            List of default-gear objects.
+            Default-gear object mapping activity types to gear IDs.
         """
-        return client.get("/profile/default_gear") or []
+        return client.get("/profile/default_gear")
 
     @mcp.tool()
     def set_default_gear(activity_type: int, gear_id: int) -> dict:
@@ -93,47 +93,43 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             gear_id: Gear ID to assign.
 
         Returns:
-            Confirmation message.
+            Updated default-gear object.
         """
-        return client.post(
-            "/profile/default_gear/create",
+        return client.put(
+            "/profile/default_gear",
             json={"activity_type": activity_type, "gear_id": gear_id},
         )
-
-    @mcp.tool()
-    def delete_default_gear(default_gear_id: int) -> dict:
-        """
-        Remove a default gear assignment.
-
-        Args:
-            default_gear_id: ID to delete.
-
-        Returns:
-            Confirmation message.
-        """
-        return client.delete(f"/profile/default_gear/{default_gear_id}/delete")
 
     # --------------------------------------------------------- Notifications
 
     @mcp.tool()
-    def list_notifications() -> list[dict]:
+    def list_notifications(page_number: int = 1, num_records: int = 50) -> list[dict]:
         """
-        List unread notifications for the authenticated user.
+        List notifications for the authenticated user (paginated).
+
+        Args:
+            page_number: Page index starting at 1.
+            num_records: Records per page.
 
         Returns:
             List of notification objects.
         """
-        return client.get("/notifications") or []
+        return (
+            client.get(f"/notifications/page_number/{page_number}/num_records/{num_records}") or []
+        )
 
     @mcp.tool()
-    def mark_notifications_read() -> dict:
+    def mark_notification_read(notification_id: int) -> dict:
         """
-        Mark all notifications as read.
+        Mark a specific notification as read.
+
+        Args:
+            notification_id: ID of the notification to mark as read.
 
         Returns:
             Confirmation message.
         """
-        return client.put("/notifications/read")
+        return client.put(f"/notifications/{notification_id}/mark_as_read")
 
     # --------------------------------------------------------- Server settings
 
@@ -156,7 +152,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             **fields: Any server settings fields to update.
 
         Returns:
-            Confirmation message.
+            Updated server settings object.
         """
         payload = {k: v for k, v in fields.items() if v is not None}
-        return client.put("/server_settings/edit", json=payload)
+        return client.put("/server_settings", json=payload)

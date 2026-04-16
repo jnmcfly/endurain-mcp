@@ -213,7 +213,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             List of stream data points.
         """
-        return client.get(f"/activities_streams/{activity_id}") or []
+        return client.get(f"/activities_streams/activity_id/{activity_id}/all") or []
 
     @mcp.tool()
     def get_activity_laps(activity_id: int) -> list[dict]:
@@ -226,7 +226,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             List of lap objects.
         """
-        return client.get(f"/activities_laps/{activity_id}") or []
+        return client.get(f"/activities_laps/activity_id/{activity_id}/all") or []
 
     @mcp.tool()
     def refresh_activities() -> list[dict] | None:
@@ -241,6 +241,6 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
 
 
 def _me_id(client: EndurainClient) -> int:
-    """Helper: return the authenticated user's ID."""
-    me = client.get("/users/me")
+    """Helper: return the authenticated user's ID via /profile."""
+    me = client.get("/profile")
     return me["id"]

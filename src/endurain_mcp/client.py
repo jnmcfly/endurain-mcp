@@ -145,10 +145,13 @@ class EndurainClient:
             response = self._http.request(method, f"{API_PREFIX}{path}", headers=headers, **kwargs)
 
         response.raise_for_status()
-        # Some endpoints return 204 No Content
-        if response.status_code == 204 or not response.content:
+        # Some endpoints return 204 No Content or an empty body
+        if response.status_code == 204 or not response.content.strip():
             return None
-        return response.json()
+        try:
+            return response.json()
+        except Exception:
+            return None
 
     def get(self, path: str, **kwargs: Any) -> Any:
         return self._request("GET", path, **kwargs)

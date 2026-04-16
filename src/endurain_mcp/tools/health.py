@@ -23,14 +23,10 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             List of health sleep objects.
         """
-        return (
-            client.get(f"/health/sleep/page_number/{page_number}/num_records/{num_records}") or []
-        )
-
-    @mcp.tool()
-    def get_sleep_count() -> int:
-        """Return total count of sleep records for the authenticated user."""
-        return client.get("/health/sleep/number")
+        result = client.get(f"/health/sleep/page_number/{page_number}/num_records/{num_records}")
+        if isinstance(result, dict):
+            return result.get("records", [])
+        return result or []
 
     @mcp.tool()
     def get_sleep(sleep_id: int) -> dict:
@@ -46,63 +42,50 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         return client.get(f"/health/sleep/{sleep_id}")
 
     @mcp.tool()
-    def get_sleep_by_date(date: str) -> dict | None:
-        """
-        Get a sleep record for a specific date.
-
-        Args:
-            date: ISO-8601 date string (YYYY-MM-DD).
-
-        Returns:
-            HealthSleepRead object or None.
-        """
-        return client.get(f"/health/sleep/date/{date}")
-
-    @mcp.tool()
     def create_sleep(
-        sleep_date: str,
-        total_minutes: int,
-        deep_sleep_minutes: int | None = None,
-        light_sleep_minutes: int | None = None,
-        rem_sleep_minutes: int | None = None,
-        awake_minutes: int | None = None,
-        start_time: str | None = None,
-        end_time: str | None = None,
+        date: str,
+        total_sleep_seconds: int,
+        deep_sleep_seconds: int | None = None,
+        light_sleep_seconds: int | None = None,
+        rem_sleep_seconds: int | None = None,
+        awake_seconds: int | None = None,
+        sleep_start_time_gmt: str | None = None,
+        sleep_end_time_gmt: str | None = None,
         sleep_score: int | None = None,
-        hrv_status: str | None = None,
+        avg_hrv_status: str | None = None,
     ) -> dict:
         """
         Create a new sleep record.
 
         Args:
-            sleep_date: Date of the sleep record (YYYY-MM-DD).
-            total_minutes: Total sleep duration in minutes.
-            deep_sleep_minutes: Deep sleep in minutes.
-            light_sleep_minutes: Light sleep in minutes.
-            rem_sleep_minutes: REM sleep in minutes.
-            awake_minutes: Awake minutes.
-            start_time: Sleep start time (ISO-8601 datetime or time string).
-            end_time: Sleep end time (ISO-8601 datetime or time string).
+            date: Date of the sleep record (YYYY-MM-DD).
+            total_sleep_seconds: Total sleep duration in seconds.
+            deep_sleep_seconds: Deep sleep in seconds.
+            light_sleep_seconds: Light sleep in seconds.
+            rem_sleep_seconds: REM sleep in seconds.
+            awake_seconds: Awake seconds.
+            sleep_start_time_gmt: Sleep start time (ISO-8601 datetime).
+            sleep_end_time_gmt: Sleep end time (ISO-8601 datetime).
             sleep_score: Numeric sleep quality score.
-            hrv_status: HRV status string.
+            avg_hrv_status: HRV status string.
 
         Returns:
             Created HealthSleepRead object.
         """
-        payload: dict = {"sleep_date": sleep_date, "total_minutes": total_minutes}
+        payload: dict = {"date": date, "total_sleep_seconds": total_sleep_seconds}
         for key, val in {
-            "deep_sleep_minutes": deep_sleep_minutes,
-            "light_sleep_minutes": light_sleep_minutes,
-            "rem_sleep_minutes": rem_sleep_minutes,
-            "awake_minutes": awake_minutes,
-            "start_time": start_time,
-            "end_time": end_time,
+            "deep_sleep_seconds": deep_sleep_seconds,
+            "light_sleep_seconds": light_sleep_seconds,
+            "rem_sleep_seconds": rem_sleep_seconds,
+            "awake_seconds": awake_seconds,
+            "sleep_start_time_gmt": sleep_start_time_gmt,
+            "sleep_end_time_gmt": sleep_end_time_gmt,
             "sleep_score": sleep_score,
-            "hrv_status": hrv_status,
+            "avg_hrv_status": avg_hrv_status,
         }.items():
             if val is not None:
                 payload[key] = val
-        return client.post("/health/sleep/create", json=payload)
+        return client.post("/health/sleep", json=payload)
 
     @mcp.tool()
     def edit_sleep(sleep_id: int, **fields: object) -> dict:
@@ -111,13 +94,13 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
 
         Args:
             sleep_id: ID of the record to update.
-            **fields: Any HealthSleepUpdate fields (total_minutes, deep_sleep_minutes, …).
+            **fields: Any HealthSleepUpdate fields (total_sleep_seconds, deep_sleep_seconds, …).
 
         Returns:
-            Confirmation message.
+            Updated HealthSleepRead object.
         """
         payload = {"id": sleep_id, **{k: v for k, v in fields.items() if v is not None}}
-        return client.put(f"/health/sleep/{sleep_id}/edit", json=payload)
+        return client.put("/health/sleep", json=payload)
 
     @mcp.tool()
     def delete_sleep(sleep_id: int) -> dict:
@@ -130,7 +113,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Confirmation message.
         """
-        return client.delete(f"/health/sleep/{sleep_id}/delete")
+        return client.delete(f"/health/sleep/{sleep_id}")
 
     # ------------------------------------------------------------------ Weight
 
@@ -146,14 +129,10 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             List of health weight objects.
         """
-        return (
-            client.get(f"/health/weight/page_number/{page_number}/num_records/{num_records}") or []
-        )
-
-    @mcp.tool()
-    def get_weight_count() -> int:
-        """Return total count of weight records."""
-        return client.get("/health/weight/number")
+        result = client.get(f"/health/weight/page_number/{page_number}/num_records/{num_records}")
+        if isinstance(result, dict):
+            return result.get("records", [])
+        return result or []
 
     @mcp.tool()
     def get_weight(weight_id: int) -> dict:
@@ -170,11 +149,11 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
 
     @mcp.tool()
     def create_weight(
-        weight_date: str,
+        date: str,
         weight: float,
         bmi: float | None = None,
         fat_percentage: float | None = None,
-        muscle_percentage: float | None = None,
+        muscle_mass_percentage: float | None = None,
         water_percentage: float | None = None,
         bone_mass: float | None = None,
     ) -> dict:
@@ -182,28 +161,43 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Log a weight measurement.
 
         Args:
-            weight_date: Date of measurement (YYYY-MM-DD).
+            date: Date of measurement (YYYY-MM-DD).
             weight: Weight value in kg.
             bmi: Body Mass Index.
             fat_percentage: Body fat percentage.
-            muscle_percentage: Muscle mass percentage.
+            muscle_mass_percentage: Muscle mass percentage.
             water_percentage: Body water percentage.
             bone_mass: Bone mass in kg.
 
         Returns:
             Created HealthWeightRead object.
         """
-        payload: dict = {"weight_date": weight_date, "weight": weight}
+        payload: dict = {"date": date, "weight": weight}
         for key, val in {
             "bmi": bmi,
             "fat_percentage": fat_percentage,
-            "muscle_percentage": muscle_percentage,
+            "muscle_mass_percentage": muscle_mass_percentage,
             "water_percentage": water_percentage,
             "bone_mass": bone_mass,
         }.items():
             if val is not None:
                 payload[key] = val
-        return client.post("/health/weight/create", json=payload)
+        return client.post("/health/weight", json=payload)
+
+    @mcp.tool()
+    def edit_weight(weight_id: int, **fields: object) -> dict:
+        """
+        Update a weight record.
+
+        Args:
+            weight_id: ID of the record to update.
+            **fields: Any HealthWeightUpdate fields (weight, bmi, fat_percentage, …).
+
+        Returns:
+            Updated HealthWeightRead object.
+        """
+        payload = {"id": weight_id, **{k: v for k, v in fields.items() if v is not None}}
+        return client.put("/health/weight", json=payload)
 
     @mcp.tool()
     def delete_weight(weight_id: int) -> dict:
@@ -216,7 +210,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Confirmation message.
         """
-        return client.delete(f"/health/weight/{weight_id}/delete")
+        return client.delete(f"/health/weight/{weight_id}")
 
     # ------------------------------------------------------------------ Steps
 
@@ -232,14 +226,10 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             List of health steps objects.
         """
-        return (
-            client.get(f"/health/steps/page_number/{page_number}/num_records/{num_records}") or []
-        )
-
-    @mcp.tool()
-    def get_steps_count() -> int:
-        """Return total count of step records."""
-        return client.get("/health/steps/number")
+        result = client.get(f"/health/steps/page_number/{page_number}/num_records/{num_records}")
+        if isinstance(result, dict):
+            return result.get("records", [])
+        return result or []
 
     @mcp.tool()
     def get_steps(steps_id: int) -> dict:
@@ -255,22 +245,37 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         return client.get(f"/health/steps/{steps_id}")
 
     @mcp.tool()
-    def create_steps(steps_date: str, steps: int, calories: int | None = None) -> dict:
+    def create_steps(date: str, steps: int, calories: int | None = None) -> dict:
         """
         Log a daily step count.
 
         Args:
-            steps_date: Date (YYYY-MM-DD).
+            date: Date (YYYY-MM-DD).
             steps: Number of steps.
             calories: Calories burned.
 
         Returns:
             Created HealthStepsRead object.
         """
-        payload: dict = {"steps_date": steps_date, "steps": steps}
+        payload: dict = {"date": date, "steps": steps}
         if calories is not None:
             payload["calories"] = calories
-        return client.post("/health/steps/create", json=payload)
+        return client.post("/health/steps", json=payload)
+
+    @mcp.tool()
+    def edit_steps(steps_id: int, **fields: object) -> dict:
+        """
+        Update a steps record.
+
+        Args:
+            steps_id: ID of the record to update.
+            **fields: Any HealthStepsUpdate fields (steps, calories, …).
+
+        Returns:
+            Updated HealthStepsRead object.
+        """
+        payload = {"id": steps_id, **{k: v for k, v in fields.items() if v is not None}}
+        return client.put("/health/steps", json=payload)
 
     @mcp.tool()
     def delete_steps(steps_id: int) -> dict:
@@ -283,55 +288,30 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Confirmation message.
         """
-        return client.delete(f"/health/steps/{steps_id}/delete")
+        return client.delete(f"/health/steps/{steps_id}")
 
     # ------------------------------------------------------------------ Targets
 
     @mcp.tool()
-    def list_health_targets() -> list[dict]:
+    def get_health_targets() -> dict | None:
         """
-        List all health targets for the authenticated user.
+        Get health targets for the authenticated user (steps, sleep, weight goals).
 
         Returns:
-            List of health target objects.
+            Health targets object with weight, steps, sleep fields.
         """
-        return client.get("/health_targets") or []
+        return client.get("/health_targets/")
 
     @mcp.tool()
-    def create_health_target(
-        target_type: str,
-        target_value: float,
-        start_date: str | None = None,
-        end_date: str | None = None,
-    ) -> dict:
+    def edit_health_targets(**fields: object) -> dict:
         """
-        Create a health target (e.g. daily steps goal).
+        Update health targets (e.g. daily steps goal, sleep goal).
 
         Args:
-            target_type: Type of target (e.g. "steps", "weight", "sleep").
-            target_value: Numeric goal value.
-            start_date: Optional start date (YYYY-MM-DD).
-            end_date: Optional end date (YYYY-MM-DD).
+            **fields: Any HealthTargetsUpdate fields (steps, sleep_seconds, weight, …).
 
         Returns:
-            Created target object.
+            Updated health targets object.
         """
-        payload: dict = {"target_type": target_type, "target_value": target_value}
-        if start_date:
-            payload["start_date"] = start_date
-        if end_date:
-            payload["end_date"] = end_date
-        return client.post("/health_targets/create", json=payload)
-
-    @mcp.tool()
-    def delete_health_target(target_id: int) -> dict:
-        """
-        Delete a health target.
-
-        Args:
-            target_id: ID to delete.
-
-        Returns:
-            Confirmation message.
-        """
-        return client.delete(f"/health_targets/{target_id}/delete")
+        payload = {k: v for k, v in fields.items() if v is not None}
+        return client.put("/health_targets/", json=payload)

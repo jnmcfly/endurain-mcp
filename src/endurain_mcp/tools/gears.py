@@ -10,14 +10,21 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
     """Register all gear-related MCP tools."""
 
     @mcp.tool()
-    def list_gears() -> list[dict]:
+    def list_gears(page_number: int = 1, num_records: int = 20) -> list[dict]:
         """
-        List all gear items for the authenticated user.
+        List gear items for the authenticated user (paginated).
+
+        Args:
+            page_number: Page index starting at 1.
+            num_records: Records per page.
 
         Returns:
             List of gear objects (bikes, shoes, wetsuits, etc.).
         """
-        return client.get("/gears") or []
+        result = client.get(f"/gears/page_number/{page_number}/num_records/{num_records}")
+        if isinstance(result, dict):
+            return result.get("records", [])
+        return result or []
 
     @mcp.tool()
     def get_gear(gear_id: int) -> dict:
@@ -30,7 +37,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Gear object.
         """
-        return client.get(f"/gears/{gear_id}")
+        return client.get(f"/gears/id/{gear_id}")
 
     @mcp.tool()
     def create_gear(
@@ -62,7 +69,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         }.items():
             if val is not None:
                 payload[key] = val
-        return client.post("/gears/create", json=payload)
+        return client.post("/gears", json=payload)
 
     @mcp.tool()
     def edit_gear(
@@ -83,7 +90,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             is_active: Active status.
 
         Returns:
-            Confirmation message.
+            Updated gear object.
         """
         payload: dict = {"id": gear_id}
         for key, val in {
@@ -94,7 +101,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         }.items():
             if val is not None:
                 payload[key] = val
-        return client.put(f"/gears/{gear_id}/edit", json=payload)
+        return client.put(f"/gears/{gear_id}", json=payload)
 
     @mcp.tool()
     def delete_gear(gear_id: int) -> dict:
@@ -107,7 +114,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Confirmation message.
         """
-        return client.delete(f"/gears/{gear_id}/delete")
+        return client.delete(f"/gears/{gear_id}")
 
     @mcp.tool()
     def list_gear_components(gear_id: int) -> list[dict]:
@@ -120,7 +127,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             List of gear component objects.
         """
-        return client.get(f"/gear_components/gear/{gear_id}") or []
+        return client.get(f"/gear_components/gear_id/{gear_id}") or []
 
     @mcp.tool()
     def create_gear_component(
@@ -151,7 +158,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         }.items():
             if val is not None:
                 payload[key] = val
-        return client.post("/gear_components/create", json=payload)
+        return client.post("/gear_components", json=payload)
 
     @mcp.tool()
     def delete_gear_component(component_id: int) -> dict:
@@ -164,17 +171,26 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Confirmation message.
         """
-        return client.delete(f"/gear_components/{component_id}/delete")
+        return client.delete(f"/gear_components/{component_id}")
 
     @mcp.tool()
-    def get_activities_by_gear(gear_id: int) -> list[dict]:
+    def get_activities_by_gear(
+        gear_id: int, page_number: int = 1, num_records: int = 20
+    ) -> list[dict]:
         """
-        List all activities that used a specific gear item.
+        List all activities that used a specific gear item (paginated).
 
         Args:
             gear_id: Gear ID.
+            page_number: Page index starting at 1.
+            num_records: Records per page.
 
         Returns:
             List of activity objects.
         """
-        return client.get(f"/activities/gear/{gear_id}") or []
+        return (
+            client.get(
+                f"/activities/gear/{gear_id}/page_number/{page_number}/num_records/{num_records}"
+            )
+            or []
+        )

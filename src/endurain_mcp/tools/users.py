@@ -15,9 +15,9 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Return the profile of the currently authenticated user.
 
         Returns:
-            UsersMe object with full profile details.
+            UsersMe object with full profile details including id, name, username, email, etc.
         """
-        return client.get("/users/me")
+        return client.get("/profile")
 
     @mcp.tool()
     def list_users(page_number: int = 1, num_records: int = 20) -> list[dict]:
@@ -31,7 +31,10 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             List of UsersRead objects.
         """
-        return client.get(f"/users/page_number/{page_number}/num_records/{num_records}") or []
+        result = client.get(f"/users/page_number/{page_number}/num_records/{num_records}")
+        if isinstance(result, dict):
+            return result.get("records", [])
+        return result or []
 
     @mcp.tool()
     def get_user(user_id: int) -> dict:
@@ -44,12 +47,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             UsersRead object.
         """
-        return client.get(f"/users/{user_id}")
-
-    @mcp.tool()
-    def get_users_count() -> int:
-        """Return total number of registered users (admin only)."""
-        return client.get("/users/number")
+        return client.get(f"/users/id/{user_id}")
 
     @mcp.tool()
     def create_user(
@@ -80,7 +78,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         }
         if name:
             payload["name"] = name
-        return client.post("/users/create", json=payload)
+        return client.post("/users", json=payload)
 
     @mcp.tool()
     def edit_user(
@@ -103,7 +101,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             unit_preference: "metric" or "imperial".
 
         Returns:
-            Confirmation message.
+            Updated UsersRead object.
         """
         payload: dict = {"id": user_id}
         for key, val in {
@@ -115,7 +113,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         }.items():
             if val is not None:
                 payload[key] = val
-        return client.put(f"/users/{user_id}/edit", json=payload)
+        return client.put(f"/users/{user_id}", json=payload)
 
     @mcp.tool()
     def delete_user(user_id: int) -> dict:
@@ -128,7 +126,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Confirmation message.
         """
-        return client.delete(f"/users/{user_id}/delete")
+        return client.delete(f"/users/{user_id}")
 
     @mcp.tool()
     def list_sessions() -> list[dict]:
@@ -138,7 +136,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             List of session objects.
         """
-        return client.get("/sessions") or []
+        return client.get("/profile/sessions") or []
 
     @mcp.tool()
     def delete_session(session_id: str) -> dict:
@@ -151,7 +149,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Confirmation message.
         """
-        return client.delete(f"/sessions/{session_id}/delete")
+        return client.delete(f"/profile/sessions/{session_id}")
 
     @mcp.tool()
     def list_followers(user_id: int | None = None) -> list[dict]:
@@ -165,7 +163,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             List of follower objects.
         """
         uid = user_id or _me_id(client)
-        return client.get(f"/followers/{uid}") or []
+        return client.get(f"/followers/user/{uid}/followers/all") or []
 
     @mcp.tool()
     def list_following(user_id: int | None = None) -> list[dict]:
@@ -179,7 +177,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             List of following objects.
         """
         uid = user_id or _me_id(client)
-        return client.get(f"/followers/{uid}/following") or []
+        return client.get(f"/followers/user/{uid}/following/all") or []
 
     @mcp.tool()
     def follow_user(user_id: int) -> dict:
@@ -192,7 +190,7 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Confirmation message.
         """
-        return client.post(f"/followers/{user_id}/add")
+        return client.post(f"/followers/create/targetUser/{user_id}")
 
     @mcp.tool()
     def unfollow_user(user_id: int) -> dict:
@@ -205,9 +203,10 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Confirmation message.
         """
-        return client.delete(f"/followers/{user_id}/delete")
+        return client.delete(f"/followers/delete/following/targetUser/{user_id}")
 
 
 def _me_id(client: EndurainClient) -> int:
-    me = client.get("/users/me")
+    """Helper: return the authenticated user's ID via /profile."""
+    me = client.get("/profile")
     return me["id"]
