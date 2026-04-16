@@ -66,11 +66,15 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Created gear object.
         """
-        payload: dict = {"nickname": nickname, "gear_type": gear_type}
+        payload: dict = {
+            "nickname": nickname,
+            "gear_type": gear_type,
+            "active": True,
+            "initial_kms": initial_kms if initial_kms is not None else 0,
+        }
         for key, val in {
             "brand": brand,
             "model": model,
-            "initial_kms": initial_kms,
             "purchase_value": purchase_value,
         }.items():
             if val is not None:
