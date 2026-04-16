@@ -2,8 +2,17 @@
 
 from __future__ import annotations
 
+import re
+
 from mcp.server.fastmcp import FastMCP
+
 from endurain_mcp.client import EndurainClient
+from endurain_mcp.tools.utils import me_id as _me_id
+
+_UUID_RE = re.compile(
+    r"^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+    re.IGNORECASE,
+)
 
 
 def register(mcp: FastMCP, client: EndurainClient) -> None:
@@ -176,6 +185,8 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Confirmation message.
         """
+        if not _UUID_RE.match(session_id):
+            raise ValueError(f"Invalid session_id '{session_id}': must be a UUID")
         return client.delete(f"/profile/sessions/{session_id}")
 
     @mcp.tool()
@@ -231,9 +242,3 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             Confirmation message.
         """
         return client.delete(f"/followers/delete/following/targetUser/{user_id}")
-
-
-def _me_id(client: EndurainClient) -> int:
-    """Helper: return the authenticated user's ID via /profile."""
-    me = client.get("/profile")
-    return me["id"]

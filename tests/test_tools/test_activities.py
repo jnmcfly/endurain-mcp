@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 
@@ -20,8 +20,9 @@ class TestListActivities:
         mock_client.get.side_effect = lambda path, **kw: (
             {"id": 42} if path == "/users/me" else [{"id": 1, "name": "Morning Run"}]
         )
-        from endurain_mcp.tools.activities import register
         from mcp.server.fastmcp import FastMCP
+
+        from endurain_mcp.tools.activities import register
 
         mcp = FastMCP("test")
         register(mcp, mock_client)

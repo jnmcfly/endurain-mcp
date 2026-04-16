@@ -3,9 +3,8 @@
 from __future__ import annotations
 
 import pytest
-import httpx
 
-from endurain_mcp.client import EndurainClient, AuthenticationError, API_PREFIX
+from endurain_mcp.client import API_PREFIX, AuthenticationError, EndurainClient
 
 BASE_URL = "http://endurain.test"
 LOGIN_URL = f"{BASE_URL}{API_PREFIX}/auth/login"

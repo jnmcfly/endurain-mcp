@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 from datetime import date
+
 from mcp.server.fastmcp import FastMCP
+
 from endurain_mcp.client import EndurainClient
+from endurain_mcp.tools.utils import me_id as _me_id
 
 
 def register(mcp: FastMCP, client: EndurainClient) -> None:
@@ -57,6 +60,8 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             raise ValueError(
                 f"Invalid sort_by '{sort_by}'. Allowed: {', '.join(sorted(_VALID_SORT_BY))}"
             )
+        if sort_order and sort_order not in {"asc", "desc"}:
+            raise ValueError(f"Invalid sort_order '{sort_order}'. Allowed: 'asc', 'desc'")
 
         params: dict = {}
         if activity_type is not None:
@@ -334,9 +339,3 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             List of activity objects or None.
         """
         return client.get("/activities/refresh")
-
-
-def _me_id(client: EndurainClient) -> int:
-    """Helper: return the authenticated user's ID via /profile."""
-    me = client.get("/profile")
-    return me["id"]

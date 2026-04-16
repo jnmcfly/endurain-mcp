@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import os
-import time
 import threading
+import time
 from typing import Any
 
 import httpx
+
+_log = logging.getLogger(__name__)
 
 
 API_PREFIX = "/api/v1"
@@ -71,7 +74,8 @@ class EndurainClient:
             data={"username": self._username, "password": self._password},
         )
         if response.status_code != 200:
-            raise AuthenticationError(f"Login failed ({response.status_code}): {response.text}")
+            _log.debug("Login error response: %s", response.text)
+            raise AuthenticationError(f"Login failed (HTTP {response.status_code})")
         data = response.json()
         self._store_tokens(data)
 
@@ -92,9 +96,8 @@ class EndurainClient:
             # Refresh token expired – need a new login
             return False
         if response.status_code != 200:
-            raise AuthenticationError(
-                f"Token refresh failed ({response.status_code}): {response.text}"
-            )
+            _log.debug("Token refresh error response: %s", response.text)
+            raise AuthenticationError(f"Token refresh failed (HTTP {response.status_code})")
         data = response.json()
         self._store_tokens(data)
         return True

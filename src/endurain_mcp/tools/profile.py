@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from mcp.server.fastmcp import FastMCP
+
 from endurain_mcp.client import EndurainClient
 
 
