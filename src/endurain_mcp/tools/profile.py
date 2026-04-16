@@ -102,6 +102,24 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         """
         return client.get("/profile/default_gear")
 
+    _VALID_GEAR_FIELDS = {
+        "run_gear_id",
+        "trail_run_gear_id",
+        "virtual_run_gear_id",
+        "ride_gear_id",
+        "gravel_ride_gear_id",
+        "mtb_ride_gear_id",
+        "virtual_ride_gear_id",
+        "ows_gear_id",
+        "walk_gear_id",
+        "hike_gear_id",
+        "tennis_gear_id",
+        "alpine_ski_gear_id",
+        "nordic_ski_gear_id",
+        "snowboard_gear_id",
+        "windsurf_gear_id",
+    }
+
     @mcp.tool()
     def set_default_gear(activity_type_field: str, gear_id: int | None) -> dict:
         """
@@ -120,6 +138,11 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Updated default-gear object.
         """
+        if activity_type_field not in _VALID_GEAR_FIELDS:
+            raise ValueError(
+                f"Invalid activity_type_field '{activity_type_field}'. "
+                f"Allowed: {', '.join(sorted(_VALID_GEAR_FIELDS))}"
+            )
         # Fetch current to merge (all fields required by API)
         current = client.get("/profile/default_gear")
         me = client.get("/profile")
