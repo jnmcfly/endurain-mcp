@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import date
 from mcp.server.fastmcp import FastMCP
 from endurain_mcp.client import EndurainClient
 
@@ -227,6 +228,76 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             List of lap objects.
         """
         return client.get(f"/activities_laps/activity_id/{activity_id}/all") or []
+
+    @mcp.tool()
+    def get_distance_stats(
+        start_date: str,
+        end_date: str | None = None,
+        activity_type: int | None = None,
+        user_id: int | None = None,
+    ) -> dict:
+        """
+        Aggregate total distance and activity count for a date range.
+        Use this for questions like "how many km did I run this year/month/week?".
+
+        Distance values in the response are in kilometers (km).
+
+        Activity type codes (most common):
+          1 = Run, 2 = Trail Run, 3 = Virtual Run,
+          4 = Ride (Bike), 5 = Gravel Ride, 6 = Mountain Bike, 7 = Virtual Ride,
+          8 = Open Water Swim, 9 = Walk, 10 = Hike
+
+        Args:
+            start_date: Start of period (YYYY-MM-DD), e.g. "2026-01-01" for year-to-date.
+            end_date: End of period (YYYY-MM-DD), defaults to today.
+            activity_type: Filter to a specific activity type (see codes above).
+            user_id: User ID (defaults to authenticated user).
+
+        Returns:
+            Dict with total_distance_km, total_count, and per_type breakdown.
+        """
+        uid = user_id or _me_id(client)
+        end = end_date or date.today().isoformat()
+
+        params: dict = {"start_date": start_date, "end_date": end}
+        if activity_type is not None:
+            params["type"] = activity_type
+
+        # Fetch all pages
+        all_activities: list[dict] = []
+        page = 1
+        page_size = 100
+        while True:
+            batch = client.get(
+                f"/activities/user/{uid}/page_number/{page}/num_records/{page_size}",
+                params=params,
+            )
+            if not batch:
+                break
+            all_activities.extend(batch)
+            if len(batch) < page_size:
+                break
+            page += 1
+
+        # Aggregate
+        total_meters = sum(a.get("distance", 0) or 0 for a in all_activities)
+        by_type: dict[int, dict] = {}
+        for a in all_activities:
+            t = a.get("activity_type", 0)
+            if t not in by_type:
+                by_type[t] = {"count": 0, "distance_km": 0.0}
+            by_type[t]["count"] += 1
+            by_type[t]["distance_km"] = round(
+                by_type[t]["distance_km"] + (a.get("distance", 0) or 0) / 1000, 2
+            )
+
+        return {
+            "start_date": start_date,
+            "end_date": end,
+            "total_distance_km": round(total_meters / 1000, 2),
+            "total_count": len(all_activities),
+            "per_type": by_type,
+        }
 
     @mcp.tool()
     def refresh_activities() -> list[dict] | None:
