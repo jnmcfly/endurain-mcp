@@ -83,7 +83,8 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
 
     @mcp.tool()
     def edit_gear(
-        gear_id: int,
+        gear_id: int | None = None,
+        current_nickname: str | None = None,
         brand: str | None = None,
         model: str | None = None,
         nickname: str | None = None,
@@ -94,11 +95,15 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         """
         Edit a gear item. Only the fields you supply will be changed.
 
+        Identify the gear by gear_id OR current_nickname (case-insensitive).
+        If both are given, gear_id takes precedence.
+
         Args:
-            gear_id: ID of the gear to edit.
+            gear_id: Numeric gear ID.
+            current_nickname: Current nickname to look up the gear (if ID unknown).
             brand: New brand.
             model: New model.
-            nickname: New nickname.
+            nickname: New nickname to set.
             active: Active status.
             initial_kms: Pre-existing kilometres.
             purchase_value: Purchase price.
@@ -106,6 +111,26 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             Updated gear object.
         """
+        if gear_id is None and current_nickname is None:
+            raise ValueError("Provide either gear_id or current_nickname")
+
+        if gear_id is None:
+            needle = (current_nickname or "").lower()
+            page, found = 1, None
+            while True:
+                result = client.get(f"/gears/page_number/{page}/num_records/100")
+                records = result.get("records", []) if isinstance(result, dict) else (result or [])
+                for g in records:
+                    if g.get("nickname", "").lower() == needle:
+                        found = g
+                        break
+                if found or len(records) < 100:
+                    break
+                page += 1
+            if not found:
+                raise ValueError(f"No gear found with nickname '{current_nickname}'")
+            gear_id = found["id"]
+
         # Fetch current values to satisfy required fields (nickname, gear_type)
         current = client.get(f"/gears/id/{gear_id}")
         payload: dict = {
@@ -126,16 +151,41 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         return client.put(f"/gears/{gear_id}", json=payload)
 
     @mcp.tool()
-    def delete_gear(gear_id: int) -> dict:
+    def delete_gear(gear_id: int | None = None, nickname: str | None = None) -> dict:
         """
-        Delete a gear item.
+        Delete a gear item by ID or nickname.
+
+        Provide either gear_id or nickname — nickname lookup is case-insensitive.
+        If both are given, gear_id takes precedence.
 
         Args:
-            gear_id: ID to delete.
+            gear_id: Numeric gear ID.
+            nickname: Gear nickname (searches all pages to resolve the ID).
 
         Returns:
             Confirmation message.
         """
+        if gear_id is None and nickname is None:
+            raise ValueError("Provide either gear_id or nickname")
+
+        if gear_id is None:
+            # Resolve nickname → ID
+            needle = (nickname or "").lower()
+            page, found = 1, None
+            while True:
+                result = client.get(f"/gears/page_number/{page}/num_records/100")
+                records = result.get("records", []) if isinstance(result, dict) else (result or [])
+                for g in records:
+                    if g.get("nickname", "").lower() == needle:
+                        found = g
+                        break
+                if found or len(records) < 100:
+                    break
+                page += 1
+            if not found:
+                raise ValueError(f"No gear found with nickname '{nickname}'")
+            gear_id = found["id"]
+
         return client.delete(f"/gears/{gear_id}")
 
     @mcp.tool()
