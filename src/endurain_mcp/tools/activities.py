@@ -33,12 +33,31 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             start_date: ISO-8601 start date filter (YYYY-MM-DD).
             end_date: ISO-8601 end date filter (YYYY-MM-DD).
             name_search: Substring search on activity name.
-            sort_by: Field to sort by (e.g. "date", "distance").
+            sort_by: Field to sort by. Allowed values: "start_time", "distance",
+                "duration", "pace", "elevation", "calories", "average_hr",
+                "name", "type", "location". Default order is by start_time desc.
             sort_order: "asc" or "desc".
 
         Returns:
             List of activity objects.
         """
+        _VALID_SORT_BY = {
+            "start_time",
+            "distance",
+            "duration",
+            "pace",
+            "elevation",
+            "calories",
+            "average_hr",
+            "name",
+            "type",
+            "location",
+        }
+        if sort_by and sort_by not in _VALID_SORT_BY:
+            raise ValueError(
+                f"Invalid sort_by '{sort_by}'. Allowed: {', '.join(sorted(_VALID_SORT_BY))}"
+            )
+
         params: dict = {}
         if activity_type is not None:
             params["type"] = activity_type
