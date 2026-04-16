@@ -48,11 +48,11 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         deep_sleep_seconds: int | None = None,
         light_sleep_seconds: int | None = None,
         rem_sleep_seconds: int | None = None,
-        awake_seconds: int | None = None,
+        awake_sleep_seconds: int | None = None,
         sleep_start_time_gmt: str | None = None,
         sleep_end_time_gmt: str | None = None,
-        sleep_score: int | None = None,
-        avg_hrv_status: str | None = None,
+        sleep_score_overall: int | None = None,
+        hrv_status: str | None = None,
     ) -> dict:
         """
         Create a new sleep record.
@@ -63,11 +63,11 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             deep_sleep_seconds: Deep sleep in seconds.
             light_sleep_seconds: Light sleep in seconds.
             rem_sleep_seconds: REM sleep in seconds.
-            awake_seconds: Awake seconds.
-            sleep_start_time_gmt: Sleep start time (ISO-8601 datetime).
-            sleep_end_time_gmt: Sleep end time (ISO-8601 datetime).
-            sleep_score: Numeric sleep quality score.
-            avg_hrv_status: HRV status string.
+            awake_sleep_seconds: Awake time in seconds.
+            sleep_start_time_gmt: Sleep start time (ISO-8601 datetime in UTC).
+            sleep_end_time_gmt: Sleep end time (ISO-8601 datetime in UTC).
+            sleep_score_overall: Overall sleep quality score (0-100).
+            hrv_status: HRV status string (e.g. "balanced", "unbalanced").
 
         Returns:
             Created HealthSleepRead object.
@@ -77,29 +77,65 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             "deep_sleep_seconds": deep_sleep_seconds,
             "light_sleep_seconds": light_sleep_seconds,
             "rem_sleep_seconds": rem_sleep_seconds,
-            "awake_seconds": awake_seconds,
+            "awake_sleep_seconds": awake_sleep_seconds,
             "sleep_start_time_gmt": sleep_start_time_gmt,
             "sleep_end_time_gmt": sleep_end_time_gmt,
-            "sleep_score": sleep_score,
-            "avg_hrv_status": avg_hrv_status,
+            "sleep_score_overall": sleep_score_overall,
+            "hrv_status": hrv_status,
         }.items():
             if val is not None:
                 payload[key] = val
         return client.post("/health/sleep", json=payload)
 
     @mcp.tool()
-    def edit_sleep(sleep_id: int, **fields: object) -> dict:
+    def edit_sleep(
+        sleep_id: int,
+        date: str | None = None,
+        total_sleep_seconds: int | None = None,
+        deep_sleep_seconds: int | None = None,
+        light_sleep_seconds: int | None = None,
+        rem_sleep_seconds: int | None = None,
+        awake_sleep_seconds: int | None = None,
+        sleep_start_time_gmt: str | None = None,
+        sleep_end_time_gmt: str | None = None,
+        sleep_score_overall: int | None = None,
+        hrv_status: str | None = None,
+    ) -> dict:
         """
-        Update a sleep record.
+        Update a sleep record. Only the fields you supply will be changed.
 
         Args:
             sleep_id: ID of the record to update.
-            **fields: Any HealthSleepUpdate fields (total_sleep_seconds, deep_sleep_seconds, …).
+            date: New date (YYYY-MM-DD).
+            total_sleep_seconds: Total sleep duration in seconds.
+            deep_sleep_seconds: Deep sleep in seconds.
+            light_sleep_seconds: Light sleep in seconds.
+            rem_sleep_seconds: REM sleep in seconds.
+            awake_sleep_seconds: Awake time in seconds.
+            sleep_start_time_gmt: Sleep start time (ISO-8601 UTC).
+            sleep_end_time_gmt: Sleep end time (ISO-8601 UTC).
+            sleep_score_overall: Overall sleep quality score (0-100).
+            hrv_status: HRV status string.
 
         Returns:
             Updated HealthSleepRead object.
         """
-        payload = {"id": sleep_id, **{k: v for k, v in fields.items() if v is not None}}
+        me = client.get("/profile")
+        payload: dict = {"id": sleep_id, "user_id": me["id"]}
+        for key, val in {
+            "date": date,
+            "total_sleep_seconds": total_sleep_seconds,
+            "deep_sleep_seconds": deep_sleep_seconds,
+            "light_sleep_seconds": light_sleep_seconds,
+            "rem_sleep_seconds": rem_sleep_seconds,
+            "awake_sleep_seconds": awake_sleep_seconds,
+            "sleep_start_time_gmt": sleep_start_time_gmt,
+            "sleep_end_time_gmt": sleep_end_time_gmt,
+            "sleep_score_overall": sleep_score_overall,
+            "hrv_status": hrv_status,
+        }.items():
+            if val is not None:
+                payload[key] = val
         return client.put("/health/sleep", json=payload)
 
     @mcp.tool()
@@ -152,10 +188,11 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         date: str,
         weight: float,
         bmi: float | None = None,
-        fat_percentage: float | None = None,
-        muscle_mass_percentage: float | None = None,
-        water_percentage: float | None = None,
+        body_fat: float | None = None,
+        muscle_mass: float | None = None,
+        body_water: float | None = None,
         bone_mass: float | None = None,
+        physique_rating: float | None = None,
     ) -> dict:
         """
         Log a weight measurement.
@@ -164,10 +201,11 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             date: Date of measurement (YYYY-MM-DD).
             weight: Weight value in kg.
             bmi: Body Mass Index.
-            fat_percentage: Body fat percentage.
-            muscle_mass_percentage: Muscle mass percentage.
-            water_percentage: Body water percentage.
+            body_fat: Body fat percentage.
+            muscle_mass: Muscle mass in kg.
+            body_water: Body water percentage.
             bone_mass: Bone mass in kg.
+            physique_rating: Physique rating score.
 
         Returns:
             Created HealthWeightRead object.
@@ -175,28 +213,56 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         payload: dict = {"date": date, "weight": weight}
         for key, val in {
             "bmi": bmi,
-            "fat_percentage": fat_percentage,
-            "muscle_mass_percentage": muscle_mass_percentage,
-            "water_percentage": water_percentage,
+            "body_fat": body_fat,
+            "muscle_mass": muscle_mass,
+            "body_water": body_water,
             "bone_mass": bone_mass,
+            "physique_rating": physique_rating,
         }.items():
             if val is not None:
                 payload[key] = val
         return client.post("/health/weight", json=payload)
 
     @mcp.tool()
-    def edit_weight(weight_id: int, **fields: object) -> dict:
+    def edit_weight(
+        weight_id: int,
+        date: str | None = None,
+        weight: float | None = None,
+        bmi: float | None = None,
+        body_fat: float | None = None,
+        muscle_mass: float | None = None,
+        body_water: float | None = None,
+        bone_mass: float | None = None,
+    ) -> dict:
         """
-        Update a weight record.
+        Update a weight record. Only the fields you supply will be changed.
 
         Args:
             weight_id: ID of the record to update.
-            **fields: Any HealthWeightUpdate fields (weight, bmi, fat_percentage, …).
+            date: New date (YYYY-MM-DD).
+            weight: Weight in kg.
+            bmi: Body Mass Index.
+            body_fat: Body fat percentage.
+            muscle_mass: Muscle mass in kg.
+            body_water: Body water percentage.
+            bone_mass: Bone mass in kg.
 
         Returns:
             Updated HealthWeightRead object.
         """
-        payload = {"id": weight_id, **{k: v for k, v in fields.items() if v is not None}}
+        me = client.get("/profile")
+        payload: dict = {"id": weight_id, "user_id": me["id"]}
+        for key, val in {
+            "date": date,
+            "weight": weight,
+            "bmi": bmi,
+            "body_fat": body_fat,
+            "muscle_mass": muscle_mass,
+            "body_water": body_water,
+            "bone_mass": bone_mass,
+        }.items():
+            if val is not None:
+                payload[key] = val
         return client.put("/health/weight", json=payload)
 
     @mcp.tool()
@@ -245,36 +311,41 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         return client.get(f"/health/steps/{steps_id}")
 
     @mcp.tool()
-    def create_steps(date: str, steps: int, calories: int | None = None) -> dict:
+    def create_steps(date: str, steps: int) -> dict:
         """
         Log a daily step count.
 
         Args:
             date: Date (YYYY-MM-DD).
             steps: Number of steps.
-            calories: Calories burned.
 
         Returns:
             Created HealthStepsRead object.
         """
-        payload: dict = {"date": date, "steps": steps}
-        if calories is not None:
-            payload["calories"] = calories
-        return client.post("/health/steps", json=payload)
+        return client.post("/health/steps", json={"date": date, "steps": steps})
 
     @mcp.tool()
-    def edit_steps(steps_id: int, **fields: object) -> dict:
+    def edit_steps(
+        steps_id: int,
+        date: str | None = None,
+        steps: int | None = None,
+    ) -> dict:
         """
-        Update a steps record.
+        Update a steps record. Only the fields you supply will be changed.
 
         Args:
             steps_id: ID of the record to update.
-            **fields: Any HealthStepsUpdate fields (steps, calories, …).
+            date: New date (YYYY-MM-DD).
+            steps: Number of steps.
 
         Returns:
             Updated HealthStepsRead object.
         """
-        payload = {"id": steps_id, **{k: v for k, v in fields.items() if v is not None}}
+        me = client.get("/profile")
+        payload: dict = {"id": steps_id, "user_id": me["id"]}
+        for key, val in {"date": date, "steps": steps}.items():
+            if val is not None:
+                payload[key] = val
         return client.put("/health/steps", json=payload)
 
     @mcp.tool()
@@ -303,15 +374,33 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         return client.get("/health_targets/")
 
     @mcp.tool()
-    def edit_health_targets(**fields: object) -> dict:
+    def edit_health_targets(
+        steps: int | None = None,
+        sleep: int | None = None,
+        weight: float | None = None,
+    ) -> dict:
         """
-        Update health targets (e.g. daily steps goal, sleep goal).
+        Update health targets. Only the fields you supply will be changed.
 
         Args:
-            **fields: Any HealthTargetsUpdate fields (steps, sleep_seconds, weight, …).
+            steps: Daily step goal (count).
+            sleep: Daily sleep goal in seconds.
+            weight: Target weight in kg.
 
         Returns:
             Updated health targets object.
         """
-        payload = {k: v for k, v in fields.items() if v is not None}
+        current = client.get("/health_targets/")
+        me = client.get("/profile")
+        payload = {
+            **current,
+            "user_id": me["id"],
+        }
+        for key, val in {
+            "steps": steps,
+            "sleep": sleep,
+            "weight": weight,
+        }.items():
+            if val is not None:
+                payload[key] = val
         return client.put("/health_targets/", json=payload)

@@ -41,31 +41,37 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
 
     @mcp.tool()
     def create_gear(
+        nickname: str,
         gear_type: int,
         brand: str | None = None,
         model: str | None = None,
-        nickname: str | None = None,
         initial_kms: float | None = None,
+        purchase_value: float | None = None,
     ) -> dict:
         """
         Create a new gear item.
 
+        Gear type codes:
+          1 = Bike, 2 = Shoes, 3 = Wetsuit, 4 = Ski, 5 = Snowboard,
+          6 = Kayak, 7 = Surfboard, 8 = Other
+
         Args:
-            gear_type: Numeric type (e.g. 1=bike, 2=shoes, 3=wetsuit, …).
+            nickname: Short display name for the gear (required, must be unique).
+            gear_type: Numeric type code (see above).
             brand: Brand name.
             model: Model name.
-            nickname: Short nickname.
             initial_kms: Pre-existing kilometres at registration.
+            purchase_value: Purchase price.
 
         Returns:
             Created gear object.
         """
-        payload: dict = {"gear_type": gear_type}
+        payload: dict = {"nickname": nickname, "gear_type": gear_type}
         for key, val in {
             "brand": brand,
             "model": model,
-            "nickname": nickname,
             "initial_kms": initial_kms,
+            "purchase_value": purchase_value,
         }.items():
             if val is not None:
                 payload[key] = val
@@ -77,27 +83,39 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         brand: str | None = None,
         model: str | None = None,
         nickname: str | None = None,
-        is_active: bool | None = None,
+        active: bool | None = None,
+        initial_kms: float | None = None,
+        purchase_value: float | None = None,
     ) -> dict:
         """
-        Edit a gear item.
+        Edit a gear item. Only the fields you supply will be changed.
 
         Args:
             gear_id: ID of the gear to edit.
             brand: New brand.
             model: New model.
             nickname: New nickname.
-            is_active: Active status.
+            active: Active status.
+            initial_kms: Pre-existing kilometres.
+            purchase_value: Purchase price.
 
         Returns:
             Updated gear object.
         """
-        payload: dict = {"id": gear_id}
+        # Fetch current values to satisfy required fields (nickname, gear_type)
+        current = client.get(f"/gears/id/{gear_id}")
+        payload: dict = {
+            "id": gear_id,
+            "nickname": current.get("nickname"),
+            "gear_type": current.get("gear_type"),
+        }
         for key, val in {
             "brand": brand,
             "model": model,
             "nickname": nickname,
-            "is_active": is_active,
+            "active": active,
+            "initial_kms": initial_kms,
+            "purchase_value": purchase_value,
         }.items():
             if val is not None:
                 payload[key] = val
@@ -132,32 +150,37 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
     @mcp.tool()
     def create_gear_component(
         gear_id: int,
-        component_type: str,
-        brand: str | None = None,
-        model: str | None = None,
-        initial_kms: float | None = None,
+        type: str,
+        brand: str,
+        model: str,
+        purchase_date: str,
+        retired_date: str | None = None,
     ) -> dict:
         """
         Add a component to a gear item.
 
         Args:
             gear_id: Parent gear ID.
-            component_type: Type label (e.g. "chain", "tyre").
-            brand: Brand name.
-            model: Model name.
-            initial_kms: Pre-existing kilometres.
+            type: Component type label (e.g. "chain", "tyre", "brake_pad").
+            brand: Brand name (required).
+            model: Model name (required).
+            purchase_date: Purchase date (YYYY-MM-DD, required).
+            retired_date: Retirement date (YYYY-MM-DD).
 
         Returns:
             Created gear component object.
         """
-        payload: dict = {"gear_id": gear_id, "component_type": component_type}
-        for key, val in {
+        me = client.get("/profile")
+        payload: dict = {
+            "gear_id": gear_id,
+            "user_id": me["id"],
+            "type": type,
             "brand": brand,
             "model": model,
-            "initial_kms": initial_kms,
-        }.items():
-            if val is not None:
-                payload[key] = val
+            "purchase_date": purchase_date,
+        }
+        if retired_date is not None:
+            payload["retired_date"] = retired_date
         return client.post("/gear_components", json=payload)
 
     @mcp.tool()

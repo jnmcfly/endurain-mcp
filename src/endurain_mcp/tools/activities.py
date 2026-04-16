@@ -167,19 +167,25 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         gear_id: int | None = None,
     ) -> dict:
         """
-        Edit an existing activity.
+        Edit an existing activity. Only the fields you supply will be changed.
 
         Args:
             activity_id: ID of the activity to edit.
             name: New name.
             description: New description.
-            visibility: New visibility level (0=private, 1=followers, 2=public).
-            gear_id: Associated gear ID.
+            visibility: Visibility level (0=private, 1=followers, 2=public).
+            gear_id: Associated gear ID (use null to remove gear).
 
         Returns:
-            Confirmation message.
+            Updated activity object.
         """
-        payload: dict = {"id": activity_id}
+        # Fetch current values to satisfy required fields (name, activity_type)
+        current = client.get(f"/activities/{activity_id}")
+        payload: dict = {
+            "id": activity_id,
+            "name": current.get("name"),
+            "activity_type": current.get("activity_type"),
+        }
         if name is not None:
             payload["name"] = name
         if description is not None:

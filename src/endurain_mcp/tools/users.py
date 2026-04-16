@@ -51,34 +51,40 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
 
     @mcp.tool()
     def create_user(
+        name: str,
         username: str,
         email: str,
         password: str,
-        name: str | None = None,
-        is_admin: bool = False,
+        access_type: str = "regular",
+        active: bool = True,
     ) -> dict:
         """
         Create a new user account (admin only).
 
+        access_type values: "regular", "admin"
+
         Args:
-            username: Unique username.
+            name: Full display name (required).
+            username: Unique username (alphanumeric, dots, hyphens, underscores).
             email: Email address.
             password: Initial password.
-            name: Display name.
-            is_admin: Grant admin access.
+            access_type: Access level ("regular" or "admin").
+            active: Whether the account is active.
 
         Returns:
             Created UsersRead object.
         """
-        payload: dict = {
-            "username": username,
-            "email": email,
-            "password": password,
-            "is_admin": is_admin,
-        }
-        if name:
-            payload["name"] = name
-        return client.post("/users", json=payload)
+        return client.post(
+            "/users",
+            json={
+                "name": name,
+                "username": username,
+                "email": email,
+                "password": password,
+                "access_type": access_type,
+                "active": active,
+            },
+        )
 
     @mcp.tool()
     def edit_user(
@@ -87,29 +93,50 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         email: str | None = None,
         username: str | None = None,
         preferred_language: str | None = None,
-        unit_preference: str | None = None,
+        units: str | None = None,
+        city: str | None = None,
+        gender: str | None = None,
+        access_type: str | None = None,
+        active: bool | None = None,
     ) -> dict:
         """
-        Edit an existing user (admin can edit any user; regular user can edit only themselves).
+        Edit an existing user. Only the fields you supply will be changed.
 
         Args:
             user_id: ID of the user to edit.
             name: New display name.
             email: New email address.
             username: New username.
-            preferred_language: Language code (e.g. "en", "de").
-            unit_preference: "metric" or "imperial".
+            preferred_language: Language code (e.g. "us", "de").
+            units: "metric" or "imperial".
+            city: City name.
+            gender: "male", "female", or "other".
+            access_type: "regular" or "admin".
+            active: Account active status.
 
         Returns:
             Updated UsersRead object.
         """
-        payload: dict = {"id": user_id}
+        # Fetch current values to satisfy all required fields
+        current = client.get(f"/users/id/{user_id}")
+        payload = {
+            "id": user_id,
+            "name": current.get("name"),
+            "username": current.get("username"),
+            "email": current.get("email"),
+            "access_type": current.get("access_type"),
+            "active": current.get("active"),
+        }
         for key, val in {
             "name": name,
             "email": email,
             "username": username,
             "preferred_language": preferred_language,
-            "unit_preference": unit_preference,
+            "units": units,
+            "city": city,
+            "gender": gender,
+            "access_type": access_type,
+            "active": active,
         }.items():
             if val is not None:
                 payload[key] = val
