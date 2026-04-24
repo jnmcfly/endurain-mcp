@@ -7,7 +7,21 @@ from datetime import date
 from mcp.server.fastmcp import FastMCP
 
 from endurain_mcp.client import EndurainClient
+from endurain_mcp.tools.utils import format_pace as _format_pace
 from endurain_mcp.tools.utils import me_id as _me_id
+
+
+def _enrich_activity(a: dict) -> dict:
+    if a.get("pace") is not None:
+        a["pace_formatted"] = _format_pace(a["pace"])
+    return a
+
+
+def _enrich_lap(lap: dict) -> dict:
+    for field in ("enhanced_avg_pace", "enhanced_max_pace"):
+        if lap.get(field) is not None:
+            lap[f"{field}_formatted"] = _format_pace(lap[field])
+    return lap
 
 
 def register(mcp: FastMCP, client: EndurainClient) -> None:
@@ -42,7 +56,8 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             sort_order: "asc" or "desc".
 
         Returns:
-            List of activity objects.
+            List of activity objects. The `pace` field is raw seconds/metre (s/m);
+            use `pace_formatted` ("mm:ss /km") for human-readable pace.
         """
         _VALID_SORT_BY = {
             "start_time",
@@ -78,13 +93,16 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             params["sort_order"] = sort_order
 
         uid = user_id or _me_id(client)
-        return (
-            client.get(
-                f"/activities/user/{uid}/page_number/{page_number}/num_records/{num_records}",
-                params=params,
+        return [
+            _enrich_activity(a)
+            for a in (
+                client.get(
+                    f"/activities/user/{uid}/page_number/{page_number}/num_records/{num_records}",
+                    params=params,
+                )
+                or []
             )
-            or []
-        )
+        ]
 
     @mcp.tool()
     def get_activity(activity_id: int) -> dict:
@@ -95,9 +113,10 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             activity_id: The numeric ID of the activity.
 
         Returns:
-            Activity object.
+            Activity object. The `pace` field is raw seconds/metre (s/m);
+            use `pace_formatted` ("mm:ss /km") for human-readable pace.
         """
-        return client.get(f"/activities/{activity_id}")
+        return _enrich_activity(client.get(f"/activities/{activity_id}"))
 
     @mcp.tool()
     def get_activities_count(
@@ -146,13 +165,16 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
     @mcp.tool()
     def get_activities_this_month(user_id: int | None = None) -> dict | None:
         """
-        Get distance totals for the current calendar month.
+        Get cumulative distance totals per sport for the current calendar month.
+
+        Returns distances in meters only — not activity counts, not goal information.
+        For goal progress use get_goal_progress. For activity counts use get_distance_stats.
 
         Args:
             user_id: User ID (defaults to authenticated user).
 
         Returns:
-            ActivityDistances object.
+            ActivityDistances object with per-sport distances in meters.
         """
         uid = user_id or _me_id(client)
         return client.get(f"/activities/user/{uid}/thismonth/distances")
@@ -170,7 +192,10 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             List of activity objects.
         """
         uid = user_id or _me_id(client)
-        return client.get(f"/activities/user/{uid}/week/{week_number}") or []
+        return [
+            _enrich_activity(a)
+            for a in (client.get(f"/activities/user/{uid}/week/{week_number}") or [])
+        ]
 
     @mcp.tool()
     def get_activity_types() -> dict | None:
@@ -255,9 +280,13 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
             activity_id: ID of the activity.
 
         Returns:
-            List of lap objects.
+            List of lap objects. Pace fields (`enhanced_avg_pace`, `enhanced_max_pace`)
+            are in s/m; formatted equivalents are added as `*_formatted` ("mm:ss /km").
         """
-        return client.get(f"/activities_laps/activity_id/{activity_id}/all") or []
+        return [
+            _enrich_lap(lap)
+            for lap in (client.get(f"/activities_laps/activity_id/{activity_id}/all") or [])
+        ]
 
     @mcp.tool()
     def get_distance_stats(

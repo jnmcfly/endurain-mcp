@@ -15,12 +15,37 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
     @mcp.tool()
     def list_goals() -> list[dict]:
         """
-        List all fitness goals for the authenticated user.
+        List the fitness goal definitions for the authenticated user.
+
+        Returns targets only (e.g. "run 100 km per month") — no progress data.
+        To check how much of a goal has been achieved, use get_goal_progress instead.
 
         Returns:
             List of goal objects.
         """
         return client.get("/profile/goals") or []
+
+    @mcp.tool()
+    def get_goal_progress() -> list[dict]:
+        """
+        Return current progress toward all fitness goals for the authenticated user.
+
+        Use this tool when the user asks about goal progress, remaining runs/km,
+        whether they are on track, or how to reach their targets this week/month/year.
+
+        Each entry contains:
+          - interval: "daily", "weekly", "monthly", or "yearly"
+          - activity_type: e.g. "run", "bike"
+          - goal_type: "distance", "duration", "elevation", "calories", "activities"
+          - goal_* : the target value (goal_distance in meters, goal_activities_number, etc.)
+          - total_* : progress so far (total_distance in meters, total_activities_number, etc.)
+          - percentage_completed: 0-100
+          - start_date / end_date: period boundaries
+
+        Returns:
+            List of UsersGoalProgress objects.
+        """
+        return client.get("/profile/goals/results") or []
 
     @mcp.tool()
     def create_goal(

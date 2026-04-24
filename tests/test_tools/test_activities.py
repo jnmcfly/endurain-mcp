@@ -65,3 +65,21 @@ class TestActivityStreams:
         mock_client.get.return_value = [{"lat": 48.0, "lon": 11.0}]
         result = mock_client.get("/activities_streams/5")
         assert len(result) == 1
+
+
+class TestFormatPace:
+    def test_known_pace(self):
+        from endurain_mcp.tools.utils import format_pace
+
+        assert format_pace(0.3) == "5:00 /km"
+
+    def test_fractional_seconds(self):
+        from endurain_mcp.tools.utils import format_pace
+
+        # 4:30/km = 270 s/km = 0.27 s/m
+        assert format_pace(0.27) == "4:30 /km"
+
+    def test_none_returns_none(self):
+        from endurain_mcp.tools.utils import format_pace
+
+        assert format_pace(None) is None
