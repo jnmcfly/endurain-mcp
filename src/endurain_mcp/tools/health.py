@@ -24,7 +24,10 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             List of health sleep objects.
         """
-        result = client.get(f"/health/sleep/page_number/{page_number}/num_records/{num_records}")
+        result = client.get(
+            "/health/sleep",
+            params={"page_number": page_number, "num_records": num_records},
+        )
         if isinstance(result, dict):
             return result.get("records", [])
         return result or []
@@ -166,7 +169,10 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             List of health weight objects.
         """
-        result = client.get(f"/health/weight/page_number/{page_number}/num_records/{num_records}")
+        result = client.get(
+            "/health/weight",
+            params={"page_number": page_number, "num_records": num_records},
+        )
         if isinstance(result, dict):
             return result.get("records", [])
         return result or []
@@ -293,7 +299,10 @@ def register(mcp: FastMCP, client: EndurainClient) -> None:
         Returns:
             List of health steps objects.
         """
-        result = client.get(f"/health/steps/page_number/{page_number}/num_records/{num_records}")
+        result = client.get(
+            "/health/steps",
+            params={"page_number": page_number, "num_records": num_records},
+        )
         if isinstance(result, dict):
             return result.get("records", [])
         return result or []

@@ -17,12 +17,12 @@ def mock_client():
 class TestSleep:
     def test_list_sleep(self, mock_client):
         mock_client.get.return_value = [{"id": 1, "total_minutes": 480}]
-        result = mock_client.get("/health/sleep/page_number/1/num_records/20") or []
+        result = mock_client.get("/health/sleep", params={"page_number": 1, "num_records": 20}) or []
         assert result[0]["total_minutes"] == 480
 
     def test_list_sleep_none_returns_empty(self, mock_client):
         mock_client.get.return_value = None
-        result = mock_client.get("/health/sleep/page_number/1/num_records/20") or []
+        result = mock_client.get("/health/sleep", params={"page_number": 1, "num_records": 20}) or []
         assert result == []
 
     def test_create_sleep(self, mock_client):
@@ -42,7 +42,7 @@ class TestSleep:
 class TestWeight:
     def test_list_weight(self, mock_client):
         mock_client.get.return_value = [{"id": 1, "weight": 75.0}]
-        result = mock_client.get("/health/weight/page_number/1/num_records/20") or []
+        result = mock_client.get("/health/weight", params={"page_number": 1, "num_records": 20}) or []
         assert result[0]["weight"] == 75.0
 
     def test_create_weight(self, mock_client):
@@ -57,7 +57,7 @@ class TestWeight:
 class TestSteps:
     def test_list_steps(self, mock_client):
         mock_client.get.return_value = [{"id": 1, "steps": 10000}]
-        result = mock_client.get("/health/steps/page_number/1/num_records/20") or []
+        result = mock_client.get("/health/steps", params={"page_number": 1, "num_records": 20}) or []
         assert result[0]["steps"] == 10000
 
     def test_create_steps(self, mock_client):
